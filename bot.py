@@ -1,10 +1,12 @@
 import telebot
-import schedule
-import time
+from apscheduler.schedulers.background import BackgroundScheduler
 
 
-TOKEN = '8051592264:AAGYDcT8cLkJ0hiJTxHJsv4VBiQfy39zQy4'
+t = open('TOKEN.txt')
 
+TOKEN = t.read()
+t.close()
+print(TOKEN)
 bot = telebot.TeleBot(TOKEN)
 users = ['']
 
@@ -17,7 +19,7 @@ def daily_send_message():
         bot.send_message(chat_id, 'текст')
 
 def schedule_daily_poll():
-    scheduler = schedule.BackgroundScheduler()
+    scheduler = BackgroundScheduler()
 
     scheduler.add_job(daily_send_message(), 'cron', hour=7, minute=0)
     scheduler.add_job(daily_send_message(), 'cron', hour=13, minute=0)
