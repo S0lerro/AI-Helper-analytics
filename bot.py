@@ -1,22 +1,41 @@
 import telebot
 from apscheduler.schedulers.background import BackgroundScheduler
+import sqlite3
+
+
+def create_table():
+    users_db = sqlite3.connect('users.db')
+    c = users_db.cursor()
+    c.execute("""CREATE TABLE users (
+        tg_id text
+    )""")
+    c.execute("INSERT INTO users VALUES('1716995834')")
+    users_db.commit()
 
 
 t = open('TOKEN.txt')
-
 TOKEN = t.read()
 t.close()
-print(TOKEN)
 bot = telebot.TeleBot(TOKEN)
-users = [1716995834]
+
+
 
 def add_to_db(ID):
-    users.append(ID)
-    print(users)
-    pass
+    db = sqlite3.connect('users.db')
+    c = db.cursor()
+    c.execute("INSERT INTO users (tg_id) VALUES (?)", (ID,))
+    db.commit()
+    db.close()
+
 
 
 def daily_send_message():
+    db = sqlite3.connect('users.db')
+    c = db.cursor()
+    c.execute("SELECT tg_id FROM users")
+    users = c.fetchall()
+    db.close()
+
     for chat_id in users:
         bot.send_message(chat_id, 'текст')
 
@@ -35,5 +54,6 @@ def start(message):
     add_to_db(message.chat.id)
 
 if __name__ == '__main__':
+    create_table()
     schedule_daily_poll()
     bot.polling(none_stop=True)
