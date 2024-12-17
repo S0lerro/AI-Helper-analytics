@@ -6,9 +6,12 @@ import sqlite3
 def create_table():
     users_db = sqlite3.connect('users.db')
     c = users_db.cursor()
-    c.execute("""CREATE TABLE users (
-        tg_id text
-    )""")
+    try:
+        c.execute("""CREATE TABLE users (
+            tg_id text
+        )""")
+    except:
+        pass
     c.execute("INSERT INTO users VALUES('1716995834')")
     users_db.commit()
 
