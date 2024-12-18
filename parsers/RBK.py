@@ -1,45 +1,79 @@
-import random
-from selenium import webdriver
+from bs4 import BeautifulSoup
 import pandas as pd
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
+import requests
 
-# ======================================================================================================================
-
-url = "https://www.rbc.ru/tags/?tag=искусственный%20интеллект&project=rbcnews"
-
-user_agents = [
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36",
-        "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36 OPR/43.0.2442.991",
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_2) AppleWebKit/604.4.7 (KHTML, like Gecko) Version/11.0.2 Safari/604.4.7"
-    ]
-
-user_agent = random.choice(user_agents)
-
-chrome_options = Options()
-chrome_options.add_argument("--headless")
-chrome_options.add_argument(f"--user-agent={user_agent}")
-driver = webdriver.Chrome(options=chrome_options)
-driver.get(url)
+def load_html(file_path):
+    with open(file_path, "r", encoding="utf-8") as file:
+        return file.read()
 
 
-# ======================================================================================================================
+def parse_news_text(soup):
+    articles = soup.find_all("span", class_="search-item__link-in")
+    news_text = []
+    for article_text in articles:
+        title = article_text.find("span", class_="search-item__title")
+        if title:
+            news_text.append(title.get_text(strip=True))
+    return news_text
 
-scrapped_text = []
-wait = WebDriverWait(driver,5)
-news_text = driver.find_elements(By.CLASS_NAME,"search-item__link-in")
-if news_text:
-    for new in news_text:
-        news_text = new.find_element(By.CLASS_NAME, "search-item__title").text
-        scrapped_text.append(news_text)
-scrapped_time = []
-news_time = driver.find_elements(By.CLASS_NAME, "search-item__bottom")
-if news_time:
-    for new in news_time:
-        news_time = new.find_element(By.CLASS_NAME, "search-item__category").text
-        scrapped_time.append(news_time)
-dict = {"Текст": scrapped_text, "Время и автор публикации": scrapped_time}
-df = pd.DataFrame(dict)
-df.to_csv('RBKFrame.csv', index=False)
-driver.quit()
+
+def parse_news_time(soup):
+    articles_time = soup.find_all("div", class_="search-item__bottom")
+    news_time = []
+    for article_time in articles_time:
+        time_info = article_time.find("span", class_="search-item__category")
+        if time_info:
+            news_time.append(time_info.get_text(strip=True))
+    return news_time
+
+
+def parse_article_links(soup):
+    article_links = []
+    articles = soup.find_all("div", class_="search-item__wrap l-col-center")
+    for article in articles:
+        link = article.find("a", class_="search-item__link js-search-item-link", href=True)
+        if link and 'href' in link.attrs:
+            article_links.append(link["href"])
+    return article_links
+
+
+def parse_article_descriptions(urls):
+    all_paragraphs = []
+    for url in urls:
+        response = requests.get(url, timeout=5)
+        soup = BeautifulSoup(response.content, "lxml")
+        paragraphs = soup.find_all("p")
+        paragraphs_text = [p.get_text(strip=True) for p in paragraphs]
+        all_paragraphs.append(" ".join(paragraphs_text))
+    return all_paragraphs
+
+
+def parse_rbc_news(file_path):
+    html_content = load_html(file_path)
+    soup = BeautifulSoup(html_content, "lxml")
+
+    news_text = parse_news_text(soup)
+    news_time = parse_news_time(soup)
+    article_links = parse_article_links(soup)
+
+    df_initial = pd.DataFrame({"Текст": news_text, "Время и автор публикации": news_time, "Ссылка": article_links})
+
+    descriptions = parse_article_descriptions(article_links)
+
+    df_final = pd.DataFrame({
+        "Текст": news_text,
+        "Время и автор публикации": news_time,
+        "Описание": descriptions,
+        "Ссылка": article_links
+    })
+
+    df_final.to_csv("RBKFrame.csv", index=False, encoding="utf-8")
+
+
+def main():
+    file_path = "source-page.html"
+    parse_rbc_news(file_path)
+
+
+if __name__ == "__main__":
+    main()
