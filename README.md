@@ -1,4 +1,4 @@
-<h1 align=center>СберАналитик</h1>
+<h1 align=center>СберАналитика</h1>
 <picture><img style="float: right" src = "https://github.com/S0lerro/AI-Helper-analytics/blob/a4e747c7dc5e1b0a7946f25c4b16f4509dc68abf/4170d43c9f8d459b81c257cb61693482.jpg" /></picture>
 <h2 align=center>Наша команда</h2>
 
