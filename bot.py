@@ -4,9 +4,9 @@ import sqlite3
 
 
 
-
 t = open('TOKEN.txt')
-TOKEN = t.read()
+TOKEN = t.read().strip()
+print(TOKEN)
 t.close()
 bot = telebot.TeleBot(TOKEN)
 categories = ['категории типа 1', '2 категория ', '3 категори']
@@ -42,11 +42,21 @@ def generate_message(callback):
     elif new.startswith("create4"):
         if new.split()[3] == '0':
             cat = new.split()
-            users_db = sqlite3.connect('websites.db')
-            c = users_db.cursor()
+            main_db = sqlite3.connect('websites.db')
+            cursor = main_db.cursor()
             menu_create = types.InlineKeyboardMarkup(row_width=2)
             menu_create.add(types.InlineKeyboardButton("Веррнуться в меню", callback_data='main_menu'))
-            bot.edit_message_text(chat_id=callback.message.chat.id, message_id=callback.message.id, text="Вот что мы нашли", reply_markup=menu_create)
+            all_text = ''
+            cursor.execute('SELECT site_name, description, time_author, link FROM websites')
+            rows = cursor.fetchall()
+            all_text = ''
+            # Форматирование и вывод данных
+            for row in rows:
+                site_name, description, time_author, link = row
+                all_text += f"{site_name}\n\n{description}\n\n{time_author}\n\n{link}\n------------------------\n"
+
+            bot.edit_message_text(chat_id=callback.message.chat.id, message_id=callback.message.id, text=all_text, reply_markup=menu_create)
+            main_db.close()
 
 @bot.message_handler(commands=["start"])
 def start(message):
@@ -56,7 +66,7 @@ def start(message):
     menu_markup.add(btn)
 
     bot.send_message(message.chat.id, "Добро пожаловать бла бла бла", reply_markup=menu_markup)
-    add_to_db(message.chat.id)
+    #add_to_db(message.chat.id)
 
 
 @bot.message_handler(content_types=['text'])
@@ -74,5 +84,5 @@ def inline_callback(callback):
 
 
 if __name__ == '__main__':
-    create_table()
+    #create_table()
     bot.polling(none_stop=True)

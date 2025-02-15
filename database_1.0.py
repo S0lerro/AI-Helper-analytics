@@ -1,7 +1,7 @@
 import pandas as pd
 import sqlite3
 
-# Загрузка данных из Excel (без заголовков)
+# Загрузка данных из Excel (Пока что для тестов пусть будет так)
 df = pd.read_excel('websites_data.xlsx', header=None)
 
 # Подключение к базе данных SQLite
