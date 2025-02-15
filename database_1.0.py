@@ -8,35 +8,32 @@ df = pd.read_excel('websites_data.xlsx', header=None)
 conn = sqlite3.connect('websites.db')
 cursor = conn.cursor()
 
-# Удаление таблицы, если она существует (пересоздаём таблицу)
-cursor.execute('DROP TABLE IF EXISTS websites')
-
-# Создание таблицы в базе данных
+# Проверка, существует ли таблица, если нет, создаем ее
 cursor.execute('''
-CREATE TABLE websites (
+CREATE TABLE IF NOT EXISTS websites (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     site_name TEXT,
-    url TEXT,
-    gost_link TEXT,
-    site_info TEXT
+    time_author TEXT,
+    description TEXT,
+    link TEXT
 )
 ''')
 
-# Вставка данных в таблицу
+# Вставка данных в таблицу (добавляем только новые данные)
 for index, row in df.iterrows():
-    site_name = row[0]        # Первая колонка: Имя сайта
-    url = row[1]              # Вторая колонка: Ссылка
-    gost_link = row[2]        # Третья колонка: Ссылка по ГОСТу
-    site_info = row[3]        # Четвертая колонка: Информация
+    site_name = row[0]        # Первая колонка: Заголовок
+    time_author = row[1]              # Вторая колонка: Время и автор публикации
+    description = row[2]        # Третья колонка: описание
+    link = row[3]        # Четвертая колонка: ссылка на сайт
 
     # Вставка данных в базу данных
     cursor.execute('''
-    INSERT INTO websites (site_name, url, gost_link, site_info) 
+    INSERT INTO websites (site_name, time_author, description, link) 
     VALUES (?, ?, ?, ?)
-    ''', (site_name, url, gost_link, site_info))
+    ''', (site_name, time_author, description, link))
 
 # Сохранение изменений и закрытие подключения
 conn.commit()
 conn.close()
 
-print("Таблица успешно пересоздана и данные импортированы.")
+print("Данные успешно добавлены в таблицу.")
