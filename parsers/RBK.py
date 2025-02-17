@@ -1,79 +1,76 @@
 from bs4 import BeautifulSoup
-import pandas as pd
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+import time
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.keys import Keys
 import requests
+import pandas as pd
 
-def load_html(file_path):
-    with open(file_path, "r", encoding="utf-8") as file:
-        return file.read()
+url = 'https://rbc.ru/'
 
+chrome_options = Options()
+chrome_options.add_argument("--disable-gpu")
+chrome_options.add_argument("--headless")
+driver = webdriver.Chrome(options=chrome_options)
 
-def parse_news_text(soup):
-    articles = soup.find_all("span", class_="search-item__link-in")
-    news_text = []
-    for article_text in articles:
-        title = article_text.find("span", class_="search-item__title")
-        if title:
-            news_text.append(title.get_text(strip=True))
-    return news_text
+driver.get(url)
 
+scroll_count = 3
+for i in range(scroll_count):
+    driver.find_element(By.TAG_NAME, 'body').send_keys(Keys.END)
+    time.sleep(2)
 
-def parse_news_time(soup):
-    articles_time = soup.find_all("div", class_="search-item__bottom")
-    news_time = []
-    for article_time in articles_time:
-        time_info = article_time.find("span", class_="search-item__category")
-        if time_info:
-            news_time.append(time_info.get_text(strip=True))
-    return news_time
+timeout = 10
+try:
+    WebDriverWait(driver, timeout).until(
+        EC.presence_of_element_located((By.TAG_NAME, "body"))
+    )
+except:
+    print("Превышено время ожидания загрузки страницы.")
 
+html = driver.page_source
+soup = BeautifulSoup(html, "lxml")
 
-def parse_article_links(soup):
-    article_links = []
-    articles = soup.find_all("div", class_="search-item__wrap l-col-center")
-    for article in articles:
-        link = article.find("a", class_="search-item__link js-search-item-link", href=True)
-        if link and 'href' in link.attrs:
-            article_links.append(link["href"])
-    return article_links
+driver.quit()
 
+headings = []
+no_wrap = soup.find_all("span", class_="no-wrap")
+for heading in no_wrap:
+    normal_wrap = heading.find("span", class_="normal-wrap")
+    if normal_wrap:
+        headings.append(heading.get_text())
 
-def parse_article_descriptions(urls):
-    all_paragraphs = []
-    for url in urls:
-        response = requests.get(url, timeout=5)
-        soup = BeautifulSoup(response.content, "lxml")
-        paragraphs = soup.find_all("p")
-        paragraphs_text = [p.get_text(strip=True) for p in paragraphs]
-        all_paragraphs.append(" ".join(paragraphs_text))
-    return all_paragraphs
+links = []
+hrefs = soup.find_all("div", class_="item__wrap l-col-center")
+for href in hrefs:
+    finded_href = href.find("a", attrs={"data-yandex-name": "from_center"}, href = True)
+    if finded_href:
+        links.append(finded_href["href"])
 
+times_list = []
+desc_list = []
+for i in range(len(links)):
+    response = requests.get(links[i])
+    soup = BeautifulSoup(response.content, "lxml")
+    time_element = soup.find("time", class_="article__header__date")
+    times_list.append(time_element.get_text(strip=True) if time_element else None)
 
-def parse_rbc_news(file_path):
-    html_content = load_html(file_path)
-    soup = BeautifulSoup(html_content, "lxml")
+    paragraphs = soup.find_all("p")
+    description_text = " ".join([p.get_text(strip=True) for p in paragraphs])
+    desc_list.append(description_text.strip() if description_text else None)
 
-    news_text = parse_news_text(soup)
-    news_time = parse_news_time(soup)
-    article_links = parse_article_links(soup)
+print(len(headings), len(times_list), len(desc_list), len(links))
 
-    df_initial = pd.DataFrame({"Текст": news_text, "Время и автор публикации": news_time, "Ссылка": article_links})
+df = pd.DataFrame({
+    "Заголовок": headings,
+    "Время публикации": times_list,
+    "Описание": desc_list,
+    "Ссылка": links
+})
 
-    descriptions = parse_article_descriptions(article_links)
-
-    df_final = pd.DataFrame({
-        "Текст": news_text,
-        "Время и автор публикации": news_time,
-        "Описание": descriptions,
-        "Ссылка": article_links
-    })
-
-    df_final.to_csv("RBKFrame.csv", index=False, encoding="utf-8")
+df.to_csv("RBCFrame.csv", index=False, encoding="utf-8")
 
 
-def main():
-    file_path = "source-page.html"
-    parse_rbc_news(file_path)
-
-
-if __name__ == "__main__":
-    main()
