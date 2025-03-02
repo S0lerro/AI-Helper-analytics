@@ -1,39 +1,39 @@
 import pandas as pd
 import sqlite3
 
-# Загрузка данных из Excel (Пока что для тестов пусть будет так)
-df = pd.read_excel('websites_data.xlsx', header=None)
+# Загрузка данных из CSV файла
+df = pd.read_csv('FerraFrame.csv')
 
 # Подключение к базе данных SQLite
 conn = sqlite3.connect('websites.db')
 cursor = conn.cursor()
 
-# Проверка, существует ли таблица, если нет, создаем ее
+# Проверка, существует ли таблица FerraFrame, если нет, создаем ее
 cursor.execute('''
-CREATE TABLE IF NOT EXISTS websites (
+CREATE TABLE IF NOT EXISTS FerraFrame (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    site_name TEXT,
+    headline TEXT,
     time_author TEXT,
     description TEXT,
     link TEXT
 )
 ''')
 
-# Вставка данных в таблицу (добавляем только новые данные)
+# Вставка данных в таблицу FerraFrame (добавляем только новые данные)
 for index, row in df.iterrows():
-    site_name = row[0]        # Первая колонка: Заголовок
-    time_author = row[1]              # Вторая колонка: Время и автор публикации
-    description = row[2]        # Третья колонка: описание
-    link = row[3]        # Четвертая колонка: ссылка на сайт
+    headline = row['Заголовок']        # Первая колонка: Заголовок
+    time_author = row['Время и автор публикации']              # Вторая колонка: Время и автор публикации
+    description = row['Описание']        # Третья колонка: Описание
+    link = row['Ссылка']        # Четвертая колонка: Ссылка на сайт
 
-    # Вставка данных в базу данных
+    # Вставка данных в таблицу FerraFrame
     cursor.execute('''
-    INSERT INTO websites (site_name, time_author, description, link) 
+    INSERT INTO FerraFrame (headline, time_author, description, link) 
     VALUES (?, ?, ?, ?)
-    ''', (site_name, time_author, description, link))
+    ''', (headline, time_author, description, link))
 
 # Сохранение изменений и закрытие подключения
 conn.commit()
 conn.close()
 
-print("Данные успешно добавлены в таблицу.")
+print("Данные успешно добавлены в таблицу FerraFrame.")
