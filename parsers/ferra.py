@@ -1,49 +1,73 @@
-import random
+from bs4 import BeautifulSoup
 from selenium import webdriver
-import pandas as pd
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
-import glob
+from selenium.webdriver.support import expected_conditions as EC
+import requests
+import pandas as pd
 
-# ======================================================================================================================
-url = "https://www.ferra.ru/label/iskusstvennyy-intellekt"
-
-user_agents = [
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36",
-        "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36 OPR/43.0.2442.991",
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_2) AppleWebKit/604.4.7 (KHTML, like Gecko) Version/11.0.2 Safari/604.4.7"
-    ]
-
-user_agent = random.choice(user_agents)
+url = 'https://www.ferra.ru/news'
 
 chrome_options = Options()
+chrome_options.add_argument("--disable-gpu")
 chrome_options.add_argument("--headless")
-chrome_options.add_argument(f"--user-agent={user_agent}")
 driver = webdriver.Chrome(options=chrome_options)
+
 driver.get(url)
-# ======================================================================================================================
 
-scrapped_text = []
-wait = WebDriverWait(driver,5)
-for i in range(1, 5):
-    news_text = driver.find_element(By.XPATH,f"/html/body/div[1]/div/div/div[1]/div/div/div[2]/div[3]/div/div[1]/div[2]/div[1]/div[1]/div/div/div[{i}]/a/div/div[2]/div[1]").text
-    scrapped_text.append(news_text)
-scrapped_time = []
-for i in range(1, 5):
-    news_time = driver.find_element(By.XPATH,f"/html/body/div[1]/div/div/div[1]/div/div/div[2]/div[3]/div/div[1]/div[2]/div[1]/div[1]/div/div/div[{i}]/a/div/div[2]/div[2]/div").text
-    scrapped_time.append(news_time)
-dict = {"Текст": scrapped_text, "Время и автор публикации": scrapped_time}
-df = pd.DataFrame(dict)
-df.to_csv('FerraFrame.csv', index=False)
+timeout = 10
+try:
+    WebDriverWait(driver, timeout).until(
+        EC.presence_of_element_located((By.TAG_NAME, "body"))
+    )
+except:
+    print("Превышено время ожидания загрузки страницы.")
 
-files = glob.glob("*.csv")
-print(files)
-combined = pd.DataFrame()
-for file in files:
-    data = pd.read_csv(file)
-    combined = pd.concat([combined, data])
-combined.to_csv("out.csv", index=False)
-
+html = driver.page_source
+soup = BeautifulSoup(html, "lxml")
 
 driver.quit()
+
+headings = []
+no_wrap = soup.find_all("div", class_="jsx-3664110909 cWiP4f7Z")
+for heading in no_wrap:
+    normal_wrap = heading.find("div", class_="jsx-3664110909 jsx-1605541728 fxLbEhKG")
+    if normal_wrap:
+        headings.append(heading.get_text())
+
+times_list = []
+times = soup.find_all("div", class_="jsx-3664110909 cWiP4f7Z")
+for time in times:
+    normal_wrap = time.find("div", class_="jsx-2175634919 texts")
+    if normal_wrap:
+        times_list.append(normal_wrap.get_text())
+
+links = []
+hrefs = soup.find_all("div", attrs={"data-qa" : "lb-block"})
+for href in hrefs:
+    finded_href = href.find("a", class_="jsx-3299022473 link", href = True)
+    if finded_href:
+        links.append("https://www.ferra.ru" + finded_href["href"])
+links.pop()
+
+desc_list = []
+for i in range(len(links)):
+    response = requests.get(links[i])
+    soup = BeautifulSoup(response.content, "lxml")
+    paragraphs = soup.find_all("p")
+    description_text = " ".join([p.get_text(strip=True) for p in paragraphs])
+    desc_list.append(description_text.strip() if description_text else None)
+
+print(len(headings), len(times_list), len(links), len(desc_list))
+
+df = pd.DataFrame({
+    "Заголовок": headings,
+    "Время публикации": times_list,
+    "Описание": desc_list,
+    "Ссылка": links
+})
+
+df.to_csv("FerraFrame.csv", index=False, encoding="utf-8")
+
+

@@ -67,10 +67,9 @@ def nlp(texts):
         return True
     else:
         return False
-        #print("not in ESGFY")
 
 def summarization(article_text):
-    WHITESPACE_HANDLER = lambda k: re.sub('\s+', ' ', re.sub('\n+', ' ', k.strip()))
+    WHITESPACE_HANDLER = lambda k: re.sub(r'\s+', ' ', re.sub('\n+', ' ', k.strip()))
 
     model_name = "csebuetnlp/mT5_multilingual_XLSum"
     tokenizer = AutoTokenizer.from_pretrained(model_name)
@@ -91,6 +90,7 @@ def summarization(article_text):
         no_repeat_ngram_size=2,
         num_beams=4
     )[0]
+
 
     summary = tokenizer.decode(
         output_ids,
@@ -120,11 +120,9 @@ def all_nlp(df):
     })
     return df_final
 
-csvs = ["RBCFrame.csv", "FerraFrame.csv", "HiTechFrame.csv"]
+csvs = ["FerraFrame.csv"]
 df = pd.concat([pd.read_csv(f) for f in csvs], ignore_index=True)
 df = all_nlp(df)
 df.to_csv("svmain.csv", index=False)
 
-df = pd.read_csv("svmain.csv")
-sqliteConnection = sqlite3.connect("websites.db")
-cursos = conn.cursor
+print(df.head(3))

@@ -2,7 +2,7 @@ import pandas as pd
 import sqlite3
 
 # Загрузка данных из CSV файла
-df = pd.read_csv('FerraFrame.csv')
+df = pd.read_csv('../FerraFrame.csv')
 
 # Подключение к базе данных SQLite
 conn = sqlite3.connect('websites.db')
