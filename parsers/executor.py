@@ -103,13 +103,13 @@ def all_nlp(df):
     for index, row in df.iterrows():
         if nlp(str(row['Описание'])):
             first.append(row['Заголовок'])
-            sec.append(row['Время и автор публикации'])
+            sec.append(row['Время публикации'])
             th.append(summarization(str(row['Описание'])))
             forth.append(row['Ссылка'])
 
     df_final = pd.DataFrame({
             "Заголовок": first,
-            "Время и автор публикации": sec,
+            "Время публикации": sec,
             "Описание": th,
             "Ссылка": forth
     })
