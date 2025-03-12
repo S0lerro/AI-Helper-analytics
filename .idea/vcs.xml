@@ -3,6 +3,5 @@
   <component name="VcsDirectoryMappings">
     <mapping directory="" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/ESGify" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/protobuf" vcs="Git" />
   </component>
 </project>
