@@ -1,90 +1,46 @@
 from bs4 import BeautifulSoup
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 import pandas as pd
 import requests
-from tqdm import tqdm
+import time
 
-def parse_news_title(soup):
-    articles = soup.find_all("h3", class_="c30ebf5669 d153213e9a ea25cccb97")
-    news_text = []
-    for article in articles:
-        title = article.find("a",
-                             class_="da2727fca3 cbde347509 e65bdf6865")
-        if title:
-            news_text.append(title.get_text(strip=True))
-    return news_text
+chrome_options = Options()
+chrome_options.add_argument("--headless")
+driver = webdriver.Chrome(options=chrome_options)
+driver.get('https://hi-tech.mail.ru/news/')
+for _ in range(10):
+    load_more = WebDriverWait(driver, 5).until(
+        EC.element_to_be_clickable((By.XPATH, '//*[@id="hitech-app-root"]/div[2]/div[4]/div[1]/div/div/div/section/main/div[2]/a/span')))
+    load_more.click()
+    time.sleep(2)  # Подождите, пока страница обновится
 
-
-def parse_news_time(soup):
-    articles_time = soup.find_all("div", class_="f2eee589ba fdd5bbc15b e53e657292 a7a6fb85f2")
-    news_time = []
-    for article_time in articles_time:
-        time_info = article_time.find("time", class_="js-ago")
-        if time_info:
-            news_time.append(time_info.get_text(strip=True))
-    return news_time
-
-
-def parse_article_links(soup):
-    article_links = []
-    articles = soup.find_all("h3")
-    for article in articles:
-        link = article.find("a", href=True)
-        if link:
-            article_links.append(link["href"])
-    return article_links
-
-
-def parse_article_descriptions(urls):
-    all_paragraphs = []
-    for url in tqdm(urls, desc="Парсинг статей"):
-        while True:
-            try:
-                response = requests.get(url, timeout=5)
-                soup = BeautifulSoup(response.content, "lxml")
-                time_tag = soup.find("time")
-                elements = soup.select(".b6a5d4949c[article-item-type=html]")
-                all_paragraphs.append(" ".join([p.get_text(strip=True) for p in elements]))
-                if time_tag:
-                    break
-            except Exception as e:
-                print(e)
-
-    return all_paragraphs
-
-
-def parse_rbc_news(url):
-    response = requests.get(url)
-
-    if response.status_code != 200:
-        print(f"Ошибка при загрузке страницы: {response.status_code}")
-        return
-
+html = driver.page_source
+soup = BeautifulSoup(html, "lxml")
+headings_list = [h.get_text() for h in soup.find_all("a", class_="da2727fca3 cbde347509 e65bdf6865")]
+time_list = [t.get_text() for t in soup.find_all("span", class_="f2eee589ba fdd5bbc15b e53e657292 a7a6fb85f2")]
+links_list = [l.find("a")["href"] for l in soup.find_all("h3", class_="c30ebf5669 d153213e9a adca14409f") if l.find('a', href=True)]
+description_list = []
+for description in links_list:
+    response = requests.get(description)
     soup = BeautifulSoup(response.content, "lxml")
+    while True:
+        paragraphs = soup.find_all("p")
+        paragraphs_text = " ".join([p.get_text(strip=True) for p in paragraphs])
+        description_list.append(paragraphs_text.strip())
+        if "b8b4d1014b d110000fb2 a57b214bb9 e8e74a6a29 d91587b71f":
+            break
+print(headings_list, time_list, links_list, description_list)
+print(len(headings_list), len(time_list), len(links_list), len(description_list))
 
-    news_text = parse_news_title(soup)
-    news_time = parse_news_time(soup)
-    article_links = parse_article_links(soup)
+df = pd.DataFrame({
+    "Заголовок": headings_list,
+    "Время публикации": time_list,
+    "Описание": description_list,
+    "Ссылка": links_list
+})
 
-    descriptions = parse_article_descriptions(article_links)
-
-
-    df_final = pd.DataFrame({
-        "Заголовок": news_text,
-        "Время и автор публикации": news_time,
-        "Описание": descriptions,
-        "Ссылка": article_links
-    })
-    filename = "../../../Desktop/Сава/Проекты/Сбер-помощник аналатика/parsers/HiTechFrame.csv"
-    df_final.to_csv(filename, index=False, encoding="utf-8")
-
-    return filename
-
-def main():
-    url = "https://hi-tech.mail.ru/tag/neyroseti/"
-    filename = parse_rbc_news(url)
-    print("Парсинг завершен!")
-    print(f"Данные сохранены в файл: {filename}")
-
-
-if __name__ == "__main__":
-    main()
+df.to_csv("HiTechFrame.csv", index=False, encoding="utf-8")

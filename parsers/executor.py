@@ -2,9 +2,9 @@ from collections import OrderedDict
 from transformers import MPNetPreTrainedModel, MPNetModel
 import torch
 import re
-from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
-import sqlite3
+from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, T5Tokenizer
 import pandas as pd
+import sentencepiece
 import os
 
 def mean_pooling(model_output, attention_mask):
@@ -65,11 +65,13 @@ def nlp(texts):
     else:
         return False
 
+
 def summarization(article_text):
     WHITESPACE_HANDLER = lambda k: re.sub(r'\s+', ' ', re.sub('\n+', ' ', k.strip()))
-
     model_name = "csebuetnlp/mT5_multilingual_XLSum"
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
+
+    # Заменяем AutoTokenizer на T5Tokenizer
+    tokenizer = T5Tokenizer.from_pretrained(model_name)
     model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
 
     input_ids = tokenizer(
@@ -77,12 +79,12 @@ def summarization(article_text):
         return_tensors="pt",
         padding="max_length",
         truncation=True,
-        max_length=len(article_text)
+        max_length=512  # Фиксируем максимальную длину
     )["input_ids"]
 
     output_ids = model.generate(
         input_ids=input_ids,
-        max_length=len(article_text) // 2,
+        max_length=256,
         no_repeat_ngram_size=2,
         num_beams=4
     )[0]
@@ -92,9 +94,7 @@ def summarization(article_text):
         skip_special_tokens=True,
         clean_up_tokenization_spaces=False
     )
-
     return summary
-
 def all_nlp(df):
     first = []
     sec = []
@@ -103,24 +103,26 @@ def all_nlp(df):
     for index, row in df.iterrows():
         if nlp(str(row['Описание'])):
             first.append(row['Заголовок'])
-            sec.append(row['Время и автор публикации'])
+            sec.append(row['Время публикации'])
             th.append(summarization(str(row['Описание'])))
             forth.append(row['Ссылка'])
 
     df_final = pd.DataFrame({
             "Заголовок": first,
-            "Время и автор публикации": sec,
+            "Время публикации": sec,
             "Описание": th,
             "Ссылка": forth
     })
     return df_final
 
 def run_parsers():
-    os.system("python RBK.py")
     os.system("python ferra.py")
+    os.system("python RBK.py")
 
 def main():
-    run_parsers()
+    a = input("Update parsers? (y/n): ")
+    if a == "y":
+        run_parsers()
 
     csvs = ["RBCFrame.csv", "FerraFrame.csv"]
     for file in csvs:
@@ -132,9 +134,6 @@ def main():
 
     df = all_nlp(df)
     df.to_csv("svmain.csv", index=False)
-
-    df = pd.read_csv("svmain.csv")
-    sqliteConnection = sqlite3.connect("websites.db")
 
 if __name__ == "__main__":
     main()
