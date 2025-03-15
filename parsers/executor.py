@@ -62,7 +62,7 @@ def nlp(texts):
            'Discrimination', 'Retrenchment', 'Labor Relations Management', 'Supply Chain (Social)']
 
     if str(model.id2label[torch.topk(results, k=47).indices.tolist()[0][0]]) not in ban:
-        return True
+        return str(model.id2label[torch.topk(results, k=47).indices.tolist()[0][0]])
     else:
         return False
 
@@ -108,21 +108,24 @@ def all_nlp(df):
     sec = []
     th = []
     forth = []
+    fifth = []
     for index, row in df.iterrows():
-        if nlp(str(row['Описание'])):
+        cat = nlp(str(row['Описание']))
+        if cat != False:
             first.append(row['Заголовок'])
             sec.append(row['Время публикации'])
             th.append(summarization(str(row['Описание'])))
             forth.append(row['Ссылка'])
+            fifth.append(cat)
 
     df_final = pd.DataFrame({
+            "Категория": fifth,
             "Заголовок": first,
             "Время публикации": sec,
             "Описание": th,
             "Ссылка": forth
     })
     return df_final
-
 
 def run_parsers():
     os.system("python ferra.py")
