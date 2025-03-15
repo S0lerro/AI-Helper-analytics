@@ -1,13 +1,11 @@
 from collections import OrderedDict
 from transformers import MPNetPreTrainedModel, MPNetModel
 import torch
-from transformers import AutoTokenizer
-from nltk.tokenize import word_tokenize, sent_tokenize
-from nltk.corpus import stopwords
+import re
+from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+import sqlite3
 import pandas as pd
 import os
-import sqlite3
-
 
 def mean_pooling(model_output, attention_mask):
     token_embeddings = model_output
@@ -67,42 +65,35 @@ def nlp(texts):
     else:
         return False
 
-
 def summarization(article_text):
-    words = word_tokenize(article_text)
-    stop_words = set(stopwords.words("russian"))
-    freqTable = dict()
+    WHITESPACE_HANDLER = lambda k: re.sub(r'\s+', ' ', re.sub('\n+', ' ', k.strip()))
 
-    for word in words:
-        word = word.lower()
-        if word in stop_words:
-            continue
-        if word in freqTable:
-            freqTable[word] += 1
-        else:
-            freqTable[word] = 1
+    model_name = "csebuetnlp/mT5_multilingual_XLSum"
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
 
-    sentences = sent_tokenize(article_text)
-    sentence_value = dict()
+    input_ids = tokenizer(
+        [WHITESPACE_HANDLER(article_text)],
+        return_tensors="pt",
+        padding="max_length",
+        truncation=True,
+        max_length=len(article_text)
+    )["input_ids"]
 
-    for sentence in sentences:
-        for word, freq in freqTable.items():
-            if word in sentence.lower():
-                if sentence in sentence_value:
-                    sentence_value[sentence] += freq
-                else:
-                    sentence_value[sentence] = freq
+    output_ids = model.generate(
+        input_ids=input_ids,
+        max_length=len(article_text) // 2,
+        no_repeat_ngram_size=2,
+        num_beams=4
+    )[0]
 
-    sumValues = sum(sentence_value.values())
-    average = int(sumValues / len(sentence_value))
-
-    summary = ""
-    for sentence in sentences:
-        if (sentence in sentence_value) and (sentence_value[sentence] > (1.2 * average)):
-            summary += " " + sentence
+    summary = tokenizer.decode(
+        output_ids,
+        skip_special_tokens=True,
+        clean_up_tokenization_spaces=False
+    )
 
     return summary
-
 
 def all_nlp(df):
     first = []
@@ -112,59 +103,24 @@ def all_nlp(df):
     for index, row in df.iterrows():
         if nlp(str(row['Описание'])):
             first.append(row['Заголовок'])
-            sec.append(row['Время публикации'])
+            sec.append(row['Время и автор публикации'])
             th.append(summarization(str(row['Описание'])))
             forth.append(row['Ссылка'])
 
     df_final = pd.DataFrame({
             "Заголовок": first,
-            "Время публикации": sec,
+            "Время и автор публикации": sec,
             "Описание": th,
             "Ссылка": forth
     })
     return df_final
 
-
 def run_parsers():
-    os.system("python ferra.py")
     os.system("python RBK.py")
-
-def database():
-    df = pd.read_csv('svmain.csv')
-
-    conn = sqlite3.connect('websites.db')
-    cursor = conn.cursor()
-
-    cursor.execute('''
-    CREATE TABLE IF NOT EXISTS AllArticles (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        headline TEXT,
-        time_author TEXT,
-        description TEXT,
-        link TEXT
-    )
-    ''')
-
-    for index, row in df.iterrows():
-        headline = row['Заголовок']  # Первая колонка: Заголовок
-        time_author = row['Время публикации']  # Вторая колонка: Время публикации
-        description = row['Описание']  # Третья колонка: Описание
-        link = row['Ссылка']  # Четвертая колонка: Ссылка на сайт
-
-        cursor.execute('''
-        INSERT INTO AllArticles (headline, time_author, description, link) 
-        VALUES (?, ?, ?, ?)
-        ''', (headline, time_author, description, link))
-
-    conn.commit()
-    conn.close()
-
-    print("Данные успешно добавлены в таблицу AllArticles.")
+    os.system("python ferra.py")
 
 def main():
-    a = input("Update parsers? (y/n): ")
-    if a == "y":
-        run_parsers()
+    run_parsers()
 
     csvs = ["RBCFrame.csv", "FerraFrame.csv"]
     for file in csvs:
@@ -176,7 +132,9 @@ def main():
 
     df = all_nlp(df)
     df.to_csv("svmain.csv", index=False)
-    database()
+
+    df = pd.read_csv("svmain.csv")
+    sqliteConnection = sqlite3.connect("websites.db")
 
 if __name__ == "__main__":
     main()
