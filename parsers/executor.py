@@ -1,10 +1,10 @@
 from collections import OrderedDict
 from transformers import MPNetPreTrainedModel, MPNetModel
 import torch
-import re
-from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, T5Tokenizer
+from transformers import AutoTokenizer
+from nltk.tokenize import word_tokenize, sent_tokenize
+from nltk.corpus import stopwords
 import pandas as pd
-import sentencepiece
 import os
 
 def mean_pooling(model_output, attention_mask):
@@ -67,34 +67,41 @@ def nlp(texts):
 
 
 def summarization(article_text):
-    WHITESPACE_HANDLER = lambda k: re.sub(r'\s+', ' ', re.sub('\n+', ' ', k.strip()))
-    model_name = "csebuetnlp/mT5_multilingual_XLSum"
+    words = word_tokenize(article_text)
+    stop_words = set(stopwords.words("russian"))
+    freqTable = dict()
 
-    # Заменяем AutoTokenizer на T5Tokenizer
-    tokenizer = T5Tokenizer.from_pretrained(model_name)
-    model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
+    for word in words:
+        word = word.lower()
+        if word in stop_words:
+            continue
+        if word in freqTable:
+            freqTable[word] += 1
+        else:
+            freqTable[word] = 1
 
-    input_ids = tokenizer(
-        [WHITESPACE_HANDLER(article_text)],
-        return_tensors="pt",
-        padding="max_length",
-        truncation=True,
-        max_length=512  # Фиксируем максимальную длину
-    )["input_ids"]
+    sentences = sent_tokenize(article_text)
+    sentence_value = dict()
 
-    output_ids = model.generate(
-        input_ids=input_ids,
-        max_length=256,
-        no_repeat_ngram_size=2,
-        num_beams=4
-    )[0]
+    for sentence in sentences:
+        for word, freq in freqTable.items():
+            if word in sentence.lower():
+                if sentence in sentence_value:
+                    sentence_value[sentence] += freq
+                else:
+                    sentence_value[sentence] = freq
 
-    summary = tokenizer.decode(
-        output_ids,
-        skip_special_tokens=True,
-        clean_up_tokenization_spaces=False
-    )
+    sumValues = sum(sentence_value.values())
+    average = int(sumValues / len(sentence_value))
+
+    summary = ""
+    for sentence in sentences:
+        if (sentence in sentence_value) and (sentence_value[sentence] > (1.2 * average)):
+            summary += " " + sentence
+
     return summary
+
+
 def all_nlp(df):
     first = []
     sec = []
@@ -114,6 +121,7 @@ def all_nlp(df):
             "Ссылка": forth
     })
     return df_final
+
 
 def run_parsers():
     os.system("python ferra.py")
