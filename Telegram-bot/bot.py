@@ -1,88 +1,265 @@
 import telebot
 from telebot import types
 import sqlite3
+import logging
 
+# Настройка логирования
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
+# Глобальные переменные для хранения состояния
+user_articles = {}
+categories = {
+    "Environmental": [
+        "Waste Management",
+        "Climate Risks",
+        "Greenhouse Gas Emissions",
+        "Air Pollution",
+        "Energy Efficiency and Renewable",
+        "Hazardous Materials Management",
+        "Soil and Groundwater Impact",
+        "Natural Resources",
+        "Planning Limitations",
+        "Landscape Transformation",
+        "Land Rehabilitation",
+        "Biodiversity",
+        "Animal Welfare",
+        "Emergencies (Environmental)",
+        "Environmental Management",
+        "Supply Chain (Environmental)",
+        "Physical Impacts",
+        "Land Acquisition and Resettlement (Environmental)",
+        "Wastewater Management",
+        "Water Consumption",
+        "Surface Water Pollution"
+    ],
+    "Social": [
+        "Emergencies (Social)",
+        "Employee Health and Safety",
+        "Land Acquisition and Resettlement (Social)",
+        "Product Safety and Quality",
+        "Indigenous People",
+        "Human Rights",
+        "Communities Health and Safety",
+        "Freedom of Association and Right to Organise",
+        "Minimum Age and Child Labor",
+        "Data Safety",
+        "Forced Labor",
+        "Discrimination",
+        "Cultural Heritage",
+        "Supply Chain (Social)",
+        "Retrenchment",
+        "Labor Relations Management"
+    ]
+}
+dates = ['Эта неделя', 'Прошлая неделя', 'За весь месяц']
+
+# Словарь для перевода названий категорий и подкатегорий
+translation_dict = {
+    "Environmental": "Окружающая среда",
+    "Social": "Общество",
+    "Waste Management": "Управление отходами",
+    "Climate Risks": "Климатические риски",
+    "Greenhouse Gas Emissions": "Выбросы парниковых газов",
+    "Air Pollution": "Загрязнение воздуха",
+    "Energy Efficiency and Renewable": "Энергоэффективность и возобновляемая энергия",
+    "Hazardous Materials Management": "Управление опасными материалами",
+    "Soil and Groundwater Impact": "Воздействие на почву и грунтовые воды",
+    "Natural Resources": "Природные ресурсы",
+    "Planning Limitations": "Ограничения планирования",
+    "Landscape Transformation": "Преобразование ландшафта",
+    "Land Rehabilitation": "Восстановление земель",
+    "Biodiversity": "Биоразнообразие",
+    "Animal Welfare": "Благополучие животных",
+    "Emergencies (Environmental)": "Экологические чрезвычайные ситуации",
+    "Environmental Management": "Управление окружающей средой",
+    "Supply Chain (Environmental)": "Цепочка поставок (экологическая)",
+    "Physical Impacts": "Физические воздействия",
+    "Land Acquisition and Resettlement (Environmental)": "Захват и переселение земель (экологическое)",
+    "Wastewater Management": "Управление сточными водами",
+    "Water Consumption": "Потребление воды",
+    "Surface Water Pollution": "Загрязнение поверхностных вод",
+    "Emergencies (Social)": "Социальные чрезвычайные ситуации",
+    "Employee Health and Safety": "Здоровье и безопасность сотрудников",
+    "Land Acquisition and Resettlement (Social)": "Захват и переселение земель (социальное)",
+    "Product Safety and Quality": "Безопасность и качество продукции",
+    "Indigenous People": "Коренные народы",
+    "Human Rights": "Права человека",
+    "Communities Health and Safety": "Здоровье и безопасность сообществ",
+    "Freedom of Association and Right to Organise": "Свобода ассоциации и право на организацию",
+    "Minimum Age and Child Labor": "Минимальный возраст и детский труд",
+    "Data Safety": "Безопасность данных",
+    "Forced Labor": "Принудительный труд",
+    "Discrimination": "Дискриминация",
+    "Cultural Heritage": "Культурное наследие",
+    "Supply Chain (Social)": "Цепочка поставок (социальная)",
+    "Retrenchment": "Сокращение штата",
+    "Labor Relations Management": "Управление трудовыми отношениями"
+}
 
 t = open('TOKEN.txt')
 TOKEN = t.read().strip()
-print(TOKEN)
 t.close()
 bot = telebot.TeleBot(TOKEN)
-categories = ['категории типа 1', '2 категория ', '3 категори']
-dates = ['эта неделя', 'прошлая неделя', 'последний месяц']
 
 
-def generate_message(callback):
-    new = callback.data
-    print(new)
-    if new == 'main_menu':
-        menu = types.InlineKeyboardMarkup(row_width=2)
-        menu.add(types.InlineKeyboardButton("Создать запрос", callback_data="create1"))
-        menu.add(types.InlineKeyboardButton("Информация", callback_data="inf"))
-        bot.edit_message_text(chat_id=callback.message.chat.id, message_id=callback.message.id, text="Привет, я бот выбери что надо", reply_markup=menu)
-    elif new == 'create1':
-        markup_cat = types.InlineKeyboardMarkup(row_width=2)
-        for cur in categories:
-            markup_cat.add(types.InlineKeyboardButton(cur, callback_data="create2 " + str(cur)))
-        bot.edit_message_text(chat_id=callback.message.chat.id, message_id=callback.message.id, text="Выберите категорию:", reply_markup=markup_cat)
-    elif new.startswith("create2"):
-        date_cat = types.InlineKeyboardMarkup(row_width=2)
-        cat = new.split()[1]
-        date_cat.add(types.InlineKeyboardButton("Эта неделя", callback_data= 'create3 ' + ' ' + cat + " 1"))
-        date_cat.add(types.InlineKeyboardButton("Прошлая неделя", callback_data='create3' + ' ' + cat + " 2"))
-        date_cat.add(types.InlineKeyboardButton("Последний месяц", callback_data='create3 ' + ' ' + cat + " 3"))
-        bot.edit_message_text(chat_id=callback.message.chat.id, message_id=callback.message.id, text="Выберите период:", reply_markup=date_cat)
-    elif new.startswith("create3"):
-        cat = new.split()
-        print(cat)
-        menu_create = types.InlineKeyboardMarkup(row_width=2)
-        menu_create.add(types.InlineKeyboardButton("Начать поиск", callback_data='create4 ' + cat[1] + ' ' + cat[2] + " 0"))
-        bot.edit_message_text(chat_id=callback.message.chat.id, message_id=callback.message.id, text="Вы выбрали дату и категорию: " + cat[1] + cat[2], reply_markup=menu_create)
-    elif new.startswith("create4"):
-        if new.split()[3] == '0':
-            cat = new.split()
-            main_db = sqlite3.connect('websites.db')
-            cursor = main_db.cursor()
-            menu_create = types.InlineKeyboardMarkup(row_width=2)
-            menu_create.add(types.InlineKeyboardButton("Веррнуться в меню", callback_data='main_menu'))
-            all_text = ''
-            cursor.execute('SELECT site_name, description, time_author, link FROM websites')
-            rows = cursor.fetchall()
-            all_text = ''
-            # Форматирование и вывод данных
-            for row in rows:
-                site_name, description, time_author, link = row
-                all_text += f"{site_name}\n\n{description}\n\n{time_author}\n\n{link}\n------------------------\n"
+def get_articles_from_db(subcategories):
+    """Получаем статьи по подкатегориям"""
+    try:
+        conn = sqlite3.connect("../parsers/websites.db")
+        cursor = conn.cursor()
+        placeholders = ",".join(["?"] * len(subcategories))
+        cursor.execute(f"""
+            SELECT headline, time_author, description, link, category
+            FROM AllArticles 
+            WHERE category IN ({placeholders})
+        """, subcategories)
+        articles = cursor.fetchall()
+        conn.close()
+        return articles
+    except Exception as e:
+        logger.error(f"Ошибка БД: {str(e)}")
+        return []
 
-            bot.edit_message_text(chat_id=callback.message.chat.id, message_id=callback.message.id, text=all_text, reply_markup=menu_create)
-            main_db.close()
+
+def show_article(chat_id, index):
+    """Показывает статью по указанному индексу"""
+    try:
+        data = user_articles.get(chat_id)
+        logger.info(f"Попытка показа статьи #{index} для chat_id {chat_id}. Данные: {data}")
+
+        if not data or index >= len(data['articles']):
+            logger.warning("Нет данных или неверный индекс")
+            return False
+
+        article = data['articles'][index]
+        if len(article) != 5:
+            logger.error(f"Некорректная структура статьи: {article}")
+            return False
+
+        headline, time_author, description, link, category = article
+
+        # Форматируем сообщение
+        message_text = (
+            f"📌 <b>Заголовок:</b> {headline}\n\n"
+            f"⏳ <b>Время:</b> {time_author}\n\n"
+            f"🔗 <b>Ссылка:</b> {link}\n\n"
+            f"📝 <b>Описание:</b> {description[:300] + '...' if len(description) > 300 else description}\n\n"
+            f"🏷️ <b>Категория:</b> {translation_dict.get(category, category)}"
+        )
+
+        # Создаем клавиатуру
+        markup = types.InlineKeyboardMarkup()
+        if index < len(data['articles']) - 1:
+            markup.add(types.InlineKeyboardButton(text="Дальше →", callback_data="next_article"))
+
+        bot.send_message(
+            chat_id,
+            message_text,
+            parse_mode='HTML',
+            reply_markup=markup,
+            disable_web_page_preview=True
+        )
+        logger.info(f"Статья #{index} успешно отправлена")
+        return True
+
+    except Exception as e:
+        logger.error(f"Ошибка в show_article: {str(e)}")
+        return False
+
 
 @bot.message_handler(commands=["start"])
 def start(message):
-    menu_markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    try:
+        menu_markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+        btn1 = types.KeyboardButton("Создать запрос")
+        btn2 = types.KeyboardButton("Связаться с разработчиками")
+        menu_markup.add(btn1, btn2)
 
-    btn = types.KeyboardButton("Меню")
-    menu_markup.add(btn)
-
-    bot.send_message(message.chat.id, "Добро пожаловать бла бла бла", reply_markup=menu_markup)
-    #add_to_db(message.chat.id)
+        bot.send_message(
+            message.chat.id,
+            f"Привет, {message.from_user.first_name}!\n"
+            "Здесь вы можете посмотреть сбор публикаций по теме AI for Good за последний месяц 🚀.\n"
+            "Это поможет исследователям отслеживать ключевые научные достижения и технологические тренды 💯",
+            reply_markup=menu_markup
+        )
+    except Exception as e:
+        logger.error(f"Ошибка в обработчике start: {str(e)}")
 
 
 @bot.message_handler(content_types=['text'])
-def menu(message):
-    markup = types.InlineKeyboardMarkup()
-    btn1 = types.InlineKeyboardButton(text='Категории', callback_data="create1")
-    btn2 = types.InlineKeyboardButton(text='Информация', callback_data="inf")
-    markup.add(btn1, btn2)
-    bot.send_message(message.from_user.id, text="Основное меню", reply_markup=markup)
+def handle_text(message):
+    try:
+        if message.text == "Создать запрос":
+            category_markup = types.InlineKeyboardMarkup()
+            btn1 = types.InlineKeyboardButton(text="Окружающая среда", callback_data="Environmental")
+            btn2 = types.InlineKeyboardButton(text="Общество", callback_data="Social")
+            category_markup.add(btn1, btn2)
+            bot.send_message(message.chat.id, "Выберите категорию", reply_markup=category_markup)
+    except Exception as e:
+        logger.error(f"Ошибка в обработчике handle_text: {str(e)}")
 
 
-@bot.callback_query_handler(func=lambda callback: True)
-def inline_callback(callback):
-    generate_message(callback)
+@bot.callback_query_handler(func=lambda call: True)
+def handle_callback(call):
+    try:
+        bot.answer_callback_query(call.id)
+        chat_id = call.message.chat.id
+
+        if call.data in ["Environmental", "Social"]:
+            # Получаем список подкатегорий для выбранной категории
+            subcategories = categories[call.data]
+
+            # Показываем выбор периода
+            markup = types.InlineKeyboardMarkup()
+            for date in dates:
+                btn = types.InlineKeyboardButton(date, callback_data=f"date_{date}_{call.data}")
+                markup.add(btn)
+
+            bot.send_message(
+                chat_id,
+                "Выберите период:",
+                reply_markup=markup
+            )
+
+        elif call.data.startswith("date_"):
+            _, date, category = call.data.split("_")
+            subcategories = categories[category]
+
+            # Загружаем статьи
+            articles = get_articles_from_db(subcategories)
+
+            if not articles:
+                bot.send_message(chat_id, "Статьи не найдены")
+                return
+
+            user_articles[chat_id] = {
+                'category': category,
+                'articles': articles,
+                'current_index': 0
+            }
+            show_article(chat_id, 0)
+
+        elif call.data == "next_article":
+            user_data = user_articles.get(chat_id)
+            if not user_data:
+                return
+
+            user_data['current_index'] += 1
+            if user_data['current_index'] >= len(user_data['articles']):
+                bot.send_message(chat_id, "Это последняя статья")
+                user_data['current_index'] = len(user_data['articles']) - 1
+                return
+
+            show_article(chat_id, user_data['current_index'])
+
+    except Exception as e:
+        logger.error(f"Ошибка: {str(e)}")
 
 
 if __name__ == '__main__':
-    #create_table()
+    logger.info("Бот запущен")
     bot.polling(none_stop=True)
