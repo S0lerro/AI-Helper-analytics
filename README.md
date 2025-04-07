@@ -1,13 +1,12 @@
+![Animation - 1744042117243 (1)](https://github.com/user-attachments/assets/33c1fd93-b799-4316-92a7-c78047a21468)
+
 <h1 align=center>СберАналитика</h1>
-<picture><img style="float: right" src = "https://github.com/S0lerro/AI-Helper-analytics/blob/a4e747c7dc5e1b0a7946f25c4b16f4509dc68abf/4170d43c9f8d459b81c257cb61693482.jpg" /></picture>
-<h2 align=center>Наша команда</h2>
 
 | Разработчик | Чем занимался |
 |-----:|---------------|
 |     Егорик| Куратор              |
 |     Сава| Парсинг              |
 |     Андрей| Разработка Telegram-бота               |
-|     Влад| База данных
 |     Ярослав| NLP     |
 |     Федук| База Данных     |
 
