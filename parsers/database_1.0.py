@@ -12,7 +12,8 @@ CREATE TABLE IF NOT EXISTS AllArticles (
     headline TEXT,
     time_author TEXT,
     description TEXT,
-    link TEXT
+    link TEXT,
+    category TEXT
 )
 ''')
 
@@ -21,11 +22,12 @@ for index, row in df.iterrows():
     time_author = row['Время публикации']  # Вторая колонка: Время публикации
     description = row['Описание']  # Третья колонка: Описание
     link = row['Ссылка']  # Четвертая колонка: Ссылка на сайт
+    category = row['Категория']
 
     cursor.execute('''
-    INSERT INTO AllArticles (headline, time_author, description, link) 
-    VALUES (?, ?, ?, ?)
-    ''', (headline, time_author, description, link))
+    INSERT INTO AllArticles (headline, time_author, description, link, category) 
+    VALUES (?, ?, ?, ?, ?)
+    ''', (headline, time_author, description, link, category))
 
 conn.commit()
 conn.close()
