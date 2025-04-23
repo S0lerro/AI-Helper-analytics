@@ -104,9 +104,9 @@ API-эндпоинты
 ## ✉️ Контакты
 По вопросам интеграции и сотрудничества:
 
-Email: analytics@yourdomain.com
+Email: Sakovin1008@gmail.com
 
-Telegram: @esg_analytics_support
+Telegram: @Udalova_ES
 
 
 ### Особенности:
