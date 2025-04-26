@@ -3,14 +3,20 @@ from telebot import types
 import sqlite3
 import logging
 
+<<<<<<< HEAD
+=======
 # Настройка логирования
+>>>>>>> origin/main
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
 
+<<<<<<< HEAD
+=======
 # Глобальные переменные для хранения состояния
+>>>>>>> origin/main
 user_articles = {}
 categories = {
     "Environmental": [
@@ -57,7 +63,10 @@ categories = {
 }
 dates = ['Эта неделя', 'Прошлая неделя', 'За весь месяц']
 
+<<<<<<< HEAD
+=======
 # Словарь для перевода названий категорий и подкатегорий
+>>>>>>> origin/main
 translation_dict = {
     "Environmental": "Окружающая среда",
     "Social": "Общество",
@@ -107,9 +116,14 @@ bot = telebot.TeleBot(TOKEN)
 
 
 def get_articles_from_db(subcategories):
+<<<<<<< HEAD
+    try:
+        conn = sqlite3.connect("../Executing/websites.db")
+=======
     """Получаем статьи по подкатегориям"""
     try:
         conn = sqlite3.connect("../parsers/websites.db")
+>>>>>>> origin/main
         cursor = conn.cursor()
         placeholders = ",".join(["?"] * len(subcategories))
         cursor.execute(f"""
@@ -126,7 +140,10 @@ def get_articles_from_db(subcategories):
 
 
 def show_article(chat_id, index):
+<<<<<<< HEAD
+=======
     """Показывает статью по указанному индексу"""
+>>>>>>> origin/main
     try:
         data = user_articles.get(chat_id)
         logger.info(f"Попытка показа статьи #{index} для chat_id {chat_id}. Данные: {data}")
@@ -136,6 +153,30 @@ def show_article(chat_id, index):
             return False
 
         article = data['articles'][index]
+<<<<<<< HEAD
+        if len(article) < 5:
+            logger.error(f"Некорректная структура статьи: {article}")
+            return False
+
+        headline = article[0]
+        time_author = article[1] if len(article) > 1 else "Не указано"
+        description = article[2] if len(article) > 2 else "Описание отсутствует"
+        link = article[3] if len(article) > 3 else "#"
+        category = article[4] if len(article) > 4 else "Неизвестная категория"
+        source = article[5] if len(article) > 5 else "Неизвестный источник"
+
+        # Делаем заголовок кликабельной ссылкой
+        clickable_headline = f'<a href="{link}">{headline}</a>'
+
+        message_text = (
+            f"📌 <b>Заголовок:</b> {clickable_headline}\n\n"
+            f"⏳ <b>Время:</b> {time_author}\n\n"
+            f"📝 <b>Описание:</b> {description[:300] + '...' if len(description) > 300 else description}\n\n"
+            f"🏷️ <b>Категория:</b> {translation_dict.get(category, category)}\n\n"
+            f"📰 <b>Источник:</b> {link}"
+        )
+
+=======
         if len(article) != 5:
             logger.error(f"Некорректная структура статьи: {article}")
             return False
@@ -152,6 +193,7 @@ def show_article(chat_id, index):
         )
 
         # Создаем клавиатуру
+>>>>>>> origin/main
         markup = types.InlineKeyboardMarkup()
         if index < len(data['articles']) - 1:
             markup.add(types.InlineKeyboardButton(text="Дальше →", callback_data="next_article"))
