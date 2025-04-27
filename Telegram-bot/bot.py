@@ -1,7 +1,11 @@
+from calendar import month
+
 import telebot
 from telebot import types
 import sqlite3
 import logging
+import datetime
+
 
 logging.basicConfig(
     level=logging.INFO,
@@ -97,7 +101,7 @@ translation_dict = {
     "Labor Relations Management": "Управление трудовыми отношениями"
 }
 
-t = open('TOKEN.txt')
+t = open('../TOKEN.txt')
 TOKEN = t.read().strip()
 t.close()
 bot = telebot.TeleBot(TOKEN)
@@ -121,7 +125,7 @@ def get_articles_from_db(subcategories):
         return []
 
 
-def show_article(chat_id, index):
+def show_article(chat_id, index, m_id):
     try:
         data = user_articles.get(chat_id)
         logger.info(f"Попытка показа статьи #{index} для chat_id {chat_id}. Данные: {data}")
@@ -142,6 +146,7 @@ def show_article(chat_id, index):
         category = article[4] if len(article) > 4 else "Неизвестная категория"
         source = article[5] if len(article) > 5 else "Неизвестный источник"
 
+
         # Делаем заголовок кликабельной ссылкой
         clickable_headline = f'<a href="{link}">{headline}</a>'
 
@@ -155,16 +160,32 @@ def show_article(chat_id, index):
 
         markup = types.InlineKeyboardMarkup()
         if index < len(data['articles']) - 1:
-            markup.add(types.InlineKeyboardButton(text="Дальше →", callback_data="next_article"))
+            markup.add(types.InlineKeyboardButton(text="Следующая →", callback_data="next_article"))
 
-        bot.send_message(
-            chat_id,
-            message_text,
-            parse_mode='HTML',
-            reply_markup=markup,
-            disable_web_page_preview=True
-        )
-        logger.info(f"Статья #{index} успешно отправлена")
+        if index > 0:
+            markup.add(types.InlineKeyboardButton(text="⟵ Предыдущая", callback_data="prev_article"))
+
+        markup.add(types.InlineKeyboardButton(text="В меню", callback_data="back_to_menu"))
+
+        if not m_id:
+            bot.send_message(
+                chat_id,
+                message_text,
+                parse_mode='HTML',
+                reply_markup=markup,
+                disable_web_page_preview=True
+            )
+
+        else:
+            bot.edit_message_text(
+                message_text,
+                chat_id,
+                m_id,
+                parse_mode='HTML',
+                reply_markup=markup,
+                disable_web_page_preview=True
+            )
+            logger.info(f"Статья #{index} успешно отправлена")
         return True
 
     except Exception as e:
@@ -200,6 +221,13 @@ def handle_text(message):
             btn2 = types.InlineKeyboardButton(text="Общество", callback_data="Social")
             category_markup.add(btn1, btn2)
             bot.send_message(message.chat.id, "Выберите категорию", reply_markup=category_markup)
+        elif message.text == "Связаться с разработчиками":
+            back_to_menu = types.ReplyKeyboardMarkup(resize_keyboard=True)
+            btn = types.KeyboardButton("Вернуться в меню")
+            back_to_menu.add(btn)
+            bot.send_message(message.chat.id, "Связь с разработчиками: \n@alinesmakotina", reply_markup = back_to_menu)
+        elif message.text == 'Вернуться в меню':
+            start(message)
     except Exception as e:
         logger.error(f"Ошибка в обработчике handle_text: {str(e)}")
 
@@ -242,21 +270,27 @@ def handle_callback(call):
                 'articles': articles,
                 'current_index': 0
             }
-            show_article(chat_id, 0)
+            show_article(chat_id, 0, 0)
 
-        elif call.data == "next_article":
+        elif call.data[4::] == "_article":
             user_data = user_articles.get(chat_id)
             if not user_data:
                 return
 
-            user_data['current_index'] += 1
+            if call.data.startswith("next"):
+                user_data['current_index'] += 1
+            if call.data.startswith("prev"):
+                user_data['current_index'] -= 1
+
             if user_data['current_index'] >= len(user_data['articles']):
                 bot.send_message(chat_id, "Это последняя статья")
                 user_data['current_index'] = len(user_data['articles']) - 1
                 return
 
-            show_article(chat_id, user_data['current_index'])
+            show_article(chat_id, user_data['current_index'], call.message.id)
 
+        elif call.data == "back_to_menu":
+            start(call.message)
     except Exception as e:
         logger.error(f"Ошибка: {str(e)}")
 
