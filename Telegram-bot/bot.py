@@ -1,5 +1,3 @@
-from calendar import month
-
 import telebot
 from telebot import types
 import sqlite3
@@ -58,7 +56,7 @@ categories = {
     ]
 }
 dates = ['Эта неделя', 'Прошлая неделя', 'За весь месяц']
-
+sources = [['rbc.ru', 'ferra.ru'],['Nature.com', 'https://www.artificialintelligence-news.com'],['RBC.ru', 'Ferra.ru','Nature.com', 'https://www.artificialintelligence-news.com']]
 translation_dict = {
     "Environmental": "Окружающая среда",
     "Social": "Общество",
@@ -107,13 +105,25 @@ t.close()
 bot = telebot.TeleBot(TOKEN)
 
 
+
+def period(n):
+    l = []
+    wd = int(datetime.datetime.now().weekday())
+    d = datetime.datetime.now().date()
+    if n == 1:
+        for i in range(wd+1):
+            l.append(d-datetime.timedelta(days = i))
+        for i in range(6-wd):
+            l.append(str(d+datetime.timedelta(days = i)))
+    return l
+
 def get_articles_from_db(subcategories):
     try:
         conn = sqlite3.connect("../Executing/websites.db")
         cursor = conn.cursor()
         placeholders = ",".join(["?"] * len(subcategories))
         cursor.execute(f"""
-            SELECT headline, time_author, description, link, category
+            SELECT headline, time_author, description, link, category, source
             FROM AllArticles 
             WHERE category IN ({placeholders})
         """, subcategories)
@@ -125,68 +135,78 @@ def get_articles_from_db(subcategories):
         return []
 
 
-def show_article(chat_id, index, m_id):
+def show_article(chat_id, index, m_id, filter):
     try:
+
         data = user_articles.get(chat_id)
         logger.info(f"Попытка показа статьи #{index} для chat_id {chat_id}. Данные: {data}")
+
 
         if not data or index >= len(data['articles']):
             logger.warning("Нет данных или неверный индекс")
             return False
 
         article = data['articles'][index]
-        if len(article) < 5:
+        if len(article) < 6:
             logger.error(f"Некорректная структура статьи: {article}")
             return False
 
         headline = article[0]
-        time_author = article[1] if len(article) > 1 else "Не указано"
-        description = article[2] if len(article) > 2 else "Описание отсутствует"
-        link = article[3] if len(article) > 3 else "#"
-        category = article[4] if len(article) > 4 else "Неизвестная категория"
-        source = article[5] if len(article) > 5 else "Неизвестный источник"
+        time_author = article[1] if article[1] else "Не указано"
+        description = article[2] if article[2] else "Описание отсутствует"
+        link = article[3] if article[3] else "#"
+        category = article[4] if article[4] else "Неизвестная категория"
+        source = article[5] if article[5] else "Неизвестный источник"
+
+        if source in sources[int(filter)]:
 
 
-        # Делаем заголовок кликабельной ссылкой
-        clickable_headline = f'<a href="{link}">{headline}</a>'
+            # Делаем заголовок кликабельной ссылкой
+            clickable_headline = f'<a href="{link}">{headline}</a>'
 
-        message_text = (
-            f"📌 <b>Заголовок:</b> {clickable_headline}\n\n"
-            f"⏳ <b>Время:</b> {time_author}\n\n"
-            f"📝 <b>Описание:</b> {description[:300] + '...' if len(description) > 300 else description}\n\n"
-            f"🏷️ <b>Категория:</b> {translation_dict.get(category, category)}\n\n"
-            f"📰 <b>Источник:</b> {link}"
-        )
-
-        markup = types.InlineKeyboardMarkup()
-        if index < len(data['articles']) - 1:
-            markup.add(types.InlineKeyboardButton(text="Следующая →", callback_data="next_article"))
-
-        if index > 0:
-            markup.add(types.InlineKeyboardButton(text="⟵ Предыдущая", callback_data="prev_article"))
-
-        markup.add(types.InlineKeyboardButton(text="В меню", callback_data="back_to_menu"))
-
-        if not m_id:
-            bot.send_message(
-                chat_id,
-                message_text,
-                parse_mode='HTML',
-                reply_markup=markup,
-                disable_web_page_preview=True
+            message_text = (
+                f"📌 <b>Заголовок:</b> {clickable_headline}\n\n"
+                f"⏳ <b>Время:</b> {time_author}\n\n"
+                f"📝 <b>Описание:</b> {description[:300] + '...' if len(description) > 300 else description}\n\n"
+                f"🏷️ <b>Категория:</b> {translation_dict.get(category, category)}\n\n"
+                f"📰 <b>Источник:</b> {link}"
             )
 
+            markup = types.InlineKeyboardMarkup()
+            if index < len(data['articles']) - 1:
+                markup.add(types.InlineKeyboardButton(text="Следующая →", callback_data="next_article"))
+
+            if index > 0:
+                markup.add(types.InlineKeyboardButton(text="⟵ Предыдущая", callback_data="prev_article"))
+
+            markup.add(types.InlineKeyboardButton(text="В меню", callback_data="back_to_menu"))
+
+
+
+            if not m_id:
+                bot.send_message(
+                    chat_id,
+                    message_text,
+                    parse_mode='HTML',
+                    reply_markup=markup,
+                    disable_web_page_preview=True
+                )
+
+            else:
+                bot.edit_message_text(
+                    message_text,
+                    chat_id,
+                    m_id,
+                    parse_mode='HTML',
+                    reply_markup=markup,
+                    disable_web_page_preview=True
+                )
+                logger.info(f"Статья #{index} успешно отправлена")
+
+            return True
         else:
-            bot.edit_message_text(
-                message_text,
-                chat_id,
-                m_id,
-                parse_mode='HTML',
-                reply_markup=markup,
-                disable_web_page_preview=True
-            )
-            logger.info(f"Статья #{index} успешно отправлена")
-        return True
+            show_article(chat_id, index+1, m_id, filter)
+            return False
 
     except Exception as e:
         logger.error(f"Ошибка в show_article: {str(e)}")
@@ -208,6 +228,7 @@ def start(message):
             "Это поможет исследователям отслеживать ключевые научные достижения и технологические тренды 💯",
             reply_markup=menu_markup
         )
+        print(period(n = 1))
     except Exception as e:
         logger.error(f"Ошибка в обработчике start: {str(e)}")
 
@@ -255,7 +276,21 @@ def handle_callback(call):
             )
 
         elif call.data.startswith("date_"):
-            _, date, category = call.data.split("_")
+
+            markup = types.InlineKeyboardMarkup()
+            btn1 = types.InlineKeyboardButton('Отечественные', callback_data=f"filter_0_{call.data}")
+            btn2 = types.InlineKeyboardButton('Иностранные', callback_data=f"filter_1_{call.data}")
+            btn3 = types.InlineKeyboardButton('Любые', callback_data=f"filter_2_{call.data}")
+            markup.add(btn1,btn2,btn3)
+
+            bot.send_message(
+                chat_id,
+                "Выберите источнкики:",
+                reply_markup=markup
+            )
+
+        elif call.data.startswith('filter'):
+            __, filter,_, date, category = call.data.split("_")
             subcategories = categories[category]
 
             # Загружаем статьи
@@ -270,7 +305,8 @@ def handle_callback(call):
                 'articles': articles,
                 'current_index': 0
             }
-            show_article(chat_id, 0, 0)
+            show_article(chat_id, 0, 0, filter)
+
 
         elif call.data[4::] == "_article":
             user_data = user_articles.get(chat_id)
@@ -287,7 +323,7 @@ def handle_callback(call):
                 user_data['current_index'] = len(user_data['articles']) - 1
                 return
 
-            show_article(chat_id, user_data['current_index'], call.message.id)
+            show_article(chat_id, user_data['current_index'], call.message.id, filter= call.data.split('_')[1])
 
         elif call.data == "back_to_menu":
             start(call.message)
