@@ -56,7 +56,7 @@ categories = {
     ]
 }
 dates = ['Эта неделя', 'Прошлая неделя', 'За весь месяц']
-sources = [['rbc.ru', 'ferra.ru'],['Nature.com', 'https://www.artificialintelligence-news.com'],['RBC.ru', 'Ferra.ru','Nature.com', 'https://www.artificialintelligence-news.com']]
+sources = [['rbc.ru', 'ferra.ru', 'pro.rbc.ru', 'ekb.plus.rbc.ru', 'realty.rbc.ru','editorial.rbc.ru', 'wine.rbc.ru', 'rbcrealty.ru'],['Nature.com', 'https://www.artificialintelligence-news.com'],['RBC.ru', 'Ferra.ru','Nature.com', 'https://www.artificialintelligence-news.com']]
 translation_dict = {
     "Environmental": "Окружающая среда",
     "Social": "Общество",
@@ -135,7 +135,7 @@ def get_articles_from_db(subcategories):
         return []
 
 
-def show_article(chat_id, index, m_id, filter):
+def show_article(chat_id, index, m_id, filter, cd):
     try:
 
         data = user_articles.get(chat_id)
@@ -158,6 +158,10 @@ def show_article(chat_id, index, m_id, filter):
         category = article[4] if article[4] else "Неизвестная категория"
         source = article[5] if article[5] else "Неизвестный источник"
 
+        if int(filter) == 2:
+            if source not in sources[2]:
+                sources[2].append(source)
+
         if source in sources[int(filter)]:
 
 
@@ -174,10 +178,10 @@ def show_article(chat_id, index, m_id, filter):
 
             markup = types.InlineKeyboardMarkup()
             if index < len(data['articles']) - 1:
-                markup.add(types.InlineKeyboardButton(text="Следующая →", callback_data="next_article"))
+                markup.add(types.InlineKeyboardButton(text="Следующая →", callback_data=f"next_article_{cd}"))
 
             if index > 0:
-                markup.add(types.InlineKeyboardButton(text="⟵ Предыдущая", callback_data="prev_article"))
+                markup.add(types.InlineKeyboardButton(text="⟵ Предыдущая", callback_data=f"prev_article_{cd}"))
 
             markup.add(types.InlineKeyboardButton(text="В меню", callback_data="back_to_menu"))
 
@@ -205,7 +209,7 @@ def show_article(chat_id, index, m_id, filter):
 
             return True
         else:
-            show_article(chat_id, index+1, m_id, filter)
+            show_article(chat_id, index+1, m_id, filter, cd)
             return False
 
     except Exception as e:
@@ -223,7 +227,7 @@ def start(message):
 
         bot.send_message(
             message.chat.id,
-            f"Привет, {message.from_user.first_name}!\n"
+            f"Привет, {message.chat.first_name}!\n"
             "Здесь вы можете посмотреть сбор публикаций по теме AI for Good за последний месяц 🚀.\n"
             "Это поможет исследователям отслеживать ключевые научные достижения и технологические тренды 💯",
             reply_markup=menu_markup
@@ -240,7 +244,8 @@ def handle_text(message):
             category_markup = types.InlineKeyboardMarkup()
             btn1 = types.InlineKeyboardButton(text="Окружающая среда", callback_data="Environmental")
             btn2 = types.InlineKeyboardButton(text="Общество", callback_data="Social")
-            category_markup.add(btn1, btn2)
+            category_markup.add(btn1)
+            category_markup.add(btn2)
             bot.send_message(message.chat.id, "Выберите категорию", reply_markup=category_markup)
         elif message.text == "Связаться с разработчиками":
             back_to_menu = types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -281,8 +286,9 @@ def handle_callback(call):
             btn1 = types.InlineKeyboardButton('Отечественные', callback_data=f"filter_0_{call.data}")
             btn2 = types.InlineKeyboardButton('Иностранные', callback_data=f"filter_1_{call.data}")
             btn3 = types.InlineKeyboardButton('Любые', callback_data=f"filter_2_{call.data}")
-            markup.add(btn1,btn2,btn3)
-
+            markup.add(btn1)
+            markup.add(btn2)
+            markup.add(btn3)
             bot.send_message(
                 chat_id,
                 "Выберите источнкики:",
@@ -305,10 +311,10 @@ def handle_callback(call):
                 'articles': articles,
                 'current_index': 0
             }
-            show_article(chat_id, 0, 0, filter)
+            show_article(chat_id, 0, 0, filter, call.data)
 
 
-        elif call.data[4::] == "_article":
+        elif call.data[4::].startswith("_article"):
             user_data = user_articles.get(chat_id)
             if not user_data:
                 return
@@ -323,7 +329,8 @@ def handle_callback(call):
                 user_data['current_index'] = len(user_data['articles']) - 1
                 return
 
-            show_article(chat_id, user_data['current_index'], call.message.id, filter= call.data.split('_')[1])
+            print(call.data)
+            show_article(chat_id, user_data['current_index'], call.message.id, filter= call.data.split('_')[3], cd = call.data[13::])
 
         elif call.data == "back_to_menu":
             start(call.message)
