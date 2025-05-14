@@ -13,6 +13,13 @@ logger = logging.getLogger(__name__)
 
 user_articles = {}
 categories = {
+    "Safety": [
+        "Emergencies (Environmental)",
+        "Physical Impacts",
+        "Community health and Safety",
+        "Employee Health and Safety",
+        "Product Safety and Quality"
+    ],
     "Environmental": [
         "Waste Management",
         "Climate Risks",
@@ -21,82 +28,64 @@ categories = {
         "Energy Efficiency and Renewable",
         "Hazardous Materials Management",
         "Soil and Groundwater Impact",
+        "Wastewater Management",
+        "Water Consumption",
+        "Surface Water Pollution",
         "Natural Resources",
-        "Planning Limitations",
         "Landscape Transformation",
         "Land Rehabilitation",
         "Biodiversity",
         "Animal Welfare",
-        "Emergencies (Environmental)",
-        "Environmental Management",
-        "Supply Chain (Environmental)",
-        "Physical Impacts",
-        "Land Acquisition and Resettlement (Environmental)",
-        "Wastewater Management",
-        "Water Consumption",
-        "Surface Water Pollution"
+        "Environmental Management"
     ],
-    "Social": [
-        "Emergencies (Social)",
-        "Employee Health and Safety",
-        "Land Acquisition and Resettlement (Social)",
-        "Product Safety and Quality",
-        "Indigenous People",
-        "Human Rights",
-        "Communities Health and Safety",
-        "Freedom of Association and Right to Organise",
-        "Minimum Age and Child Labor",
-        "Data Safety",
-        "Forced Labor",
-        "Discrimination",
-        "Cultural Heritage",
-        "Supply Chain (Social)",
-        "Retrenchment",
-        "Labor Relations Management"
+    "Sustainable Cities": [
+        "Planning Limitations",
+        "Land Acquisition and Resettlement (Environmental)"
+    ],
+    "Manufacturing": [
+        "Supply Chain (Environmental)"
+    ],
+    "Culture": [
+        "Cultural Heritage"
     ]
 }
 dates = ['Эта неделя', 'Прошлая неделя', 'За весь месяц']
 sources = [['rbc.ru', 'ferra.ru', 'pro.rbc.ru', 'ekb.plus.rbc.ru', 'realty.rbc.ru','editorial.rbc.ru', 'wine.rbc.ru', 'rbcrealty.ru'],['Nature.com', 'https://www.artificialintelligence-news.com'],['RBC.ru', 'Ferra.ru','Nature.com', 'https://www.artificialintelligence-news.com']]
 translation_dict = {
-    "Environmental": "Окружающая среда",
-    "Social": "Общество",
+    "Safety": "Безопасность",
+    "Environmental": "Экология",
+    "Sustainable Cities": "Устойчивые города",
+    "Manufacturing": "Производство",
+    "Culture": "Культура",
+
+    "Emergencies (Environmental)": "Чрезвычайные ситуации (экологические)",
+    "Physical Impacts": "Физические воздействия",
+    "Community health and Safety": "Здоровье и безопасность сообществ",
+    "Employee Health and Safety": "Здоровье и безопасность сотрудников",
+    "Product Safety and Quality": "Безопасность и качество продукции",
+
     "Waste Management": "Управление отходами",
     "Climate Risks": "Климатические риски",
     "Greenhouse Gas Emissions": "Выбросы парниковых газов",
     "Air Pollution": "Загрязнение воздуха",
-    "Energy Efficiency and Renewable": "Энергоэффективность и возобновляемая энергия",
+    "Energy Efficiency and Renewable": "Энергоэффективность и возобновляемые источники энергии",
     "Hazardous Materials Management": "Управление опасными материалами",
-    "Soil and Groundwater Impact": "Воздействие на почву и грунтовые воды",
+    "Soil and Groundwater Impact": "Воздействие на почву и подземные воды",
+    "Wastewater Management": "Управление сточными водами",
+    "Water Consumption": "Потребление воды",
+    "Surface Water Pollution": "Загрязнение поверхностных вод",
     "Natural Resources": "Природные ресурсы",
-    "Planning Limitations": "Ограничения планирования",
     "Landscape Transformation": "Преобразование ландшафта",
     "Land Rehabilitation": "Восстановление земель",
     "Biodiversity": "Биоразнообразие",
     "Animal Welfare": "Благополучие животных",
-    "Emergencies (Environmental)": "Экологические чрезвычайные ситуации",
     "Environmental Management": "Управление окружающей средой",
     "Supply Chain (Environmental)": "Цепочка поставок (экологическая)",
-    "Physical Impacts": "Физические воздействия",
-    "Land Acquisition and Resettlement (Environmental)": "Захват и переселение земель (экологическое)",
-    "Wastewater Management": "Управление сточными водами",
-    "Water Consumption": "Потребление воды",
-    "Surface Water Pollution": "Загрязнение поверхностных вод",
-    "Emergencies (Social)": "Социальные чрезвычайные ситуации",
-    "Employee Health and Safety": "Здоровье и безопасность сотрудников",
-    "Land Acquisition and Resettlement (Social)": "Захват и переселение земель (социальное)",
-    "Product Safety and Quality": "Безопасность и качество продукции",
-    "Indigenous People": "Коренные народы",
-    "Human Rights": "Права человека",
-    "Communities Health and Safety": "Здоровье и безопасность сообществ",
-    "Freedom of Association and Right to Organise": "Свобода ассоциации и право на организацию",
-    "Minimum Age and Child Labor": "Минимальный возраст и детский труд",
-    "Data Safety": "Безопасность данных",
-    "Forced Labor": "Принудительный труд",
-    "Discrimination": "Дискриминация",
-    "Cultural Heritage": "Культурное наследие",
-    "Supply Chain (Social)": "Цепочка поставок (социальная)",
-    "Retrenchment": "Сокращение штата",
-    "Labor Relations Management": "Управление трудовыми отношениями"
+
+    "Planning Limitations": "Ограничения планирования",
+    "Land Acquisition and Resettlement (Environmental)": "Приобретение земель и переселение (экологические)",
+
+    "Cultural Heritage": "Культурное наследие"
 }
 
 t = open('../TOKEN.txt')
@@ -242,10 +231,16 @@ def handle_text(message):
     try:
         if message.text == "Создать запрос":
             category_markup = types.InlineKeyboardMarkup()
-            btn1 = types.InlineKeyboardButton(text="Окружающая среда", callback_data="Environmental")
-            btn2 = types.InlineKeyboardButton(text="Общество", callback_data="Social")
+            btn1 = types.InlineKeyboardButton(text="Экология", callback_data="Environmental")
+            btn2 = types.InlineKeyboardButton(text="Безопасность", callback_data="Safety")
+            btn3 = types.InlineKeyboardButton(text="Устойчивые города", callback_data="Sustainable Cities")
+            btn4 = types.InlineKeyboardButton(text="Производство", callback_data="Manufacturing")
+            btn5 = types.InlineKeyboardButton(text="Культура", callback_data="Culture")
             category_markup.add(btn1)
             category_markup.add(btn2)
+            category_markup.add(btn3)
+            category_markup.add(btn4)
+            category_markup.add(btn5)
             bot.send_message(message.chat.id, "Выберите категорию", reply_markup=category_markup)
         elif message.text == "Связаться с разработчиками":
             back_to_menu = types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -264,7 +259,7 @@ def handle_callback(call):
         bot.answer_callback_query(call.id)
         chat_id = call.message.chat.id
 
-        if call.data in ["Environmental", "Social"]:
+        if call.data in ["Environmental", "Safety", "Sustainable Cities", "Manufacturing", "Culture"]:
             # Получаем список подкатегорий для выбранной категории
             subcategories = categories[call.data]
 
