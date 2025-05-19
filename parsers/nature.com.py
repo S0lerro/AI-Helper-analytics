@@ -53,20 +53,17 @@ for link in links_list:
     try:
         driver.get(link)
 
-        # Wait for page to load
         WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.TAG_NAME, "body")))
 
-        # Try to find and click cookie button if it exists
         try:
-            # Use CSS selector instead of CLASS_NAME for multiple classes
             cookie_button = WebDriverWait(driver, 5).until(
                 EC.element_to_be_clickable((By.CSS_SELECTOR,
                                             ".cc-button.cc-button--secondary.cc-button--contrast.cc-banner__button.cc-banner__button-accept"))
             )
             cookie_button.click()
-            time.sleep(1)  # Wait for cookie banner to disappear
+            time.sleep(1)
         except:
-            pass  # If cookie button not found, continue
+            pass
 
         # Get description
         paragraphs = driver.find_elements(By.CLASS_NAME, "article__teaser")
@@ -86,4 +83,4 @@ df = pd.DataFrame({
     "Ссылка": links_list
 })
 
-df.to_csv("NatureFrame.csv", index=False, encoding="utf-8")
+df.to_csv("../Frames/NatureFrame.csv", index=False, encoding="utf-8")
