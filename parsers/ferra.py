@@ -7,6 +7,23 @@ from selenium.webdriver.support import expected_conditions as EC
 import requests
 import pandas as pd
 import time
+from datetime import datetime
+
+# Словарь для преобразования русских месяцев в числовой формат
+MONTHS = {
+    'января': '01',
+    'февраля': '02',
+    'марта': '03',
+    'апреля': '04',
+    'мая': '05',
+    'июня': '06',
+    'июля': '07',
+    'августа': '08',
+    'сентября': '09',
+    'октября': '10',
+    'ноября': '11',
+    'декабря': '12'
+}
 
 url = 'https://www.ferra.ru/news'
 
@@ -47,7 +64,17 @@ for article in articles:
     time_tag = article.find("div", class_="jsx-4218023674 AIJ5ijeB")
     if time_tag:
         time_inner = time_tag.find("div", class_="jsx-2175634919 texts")
-        pub_time = time_inner.get_text(strip=True) if time_inner else "Не указано."
+        if time_inner:
+            raw_time = time_inner.get_text(strip=True)
+            try:
+                date_part = raw_time.split(",")[0].strip()  # "26 апреля 2025"
+                day, month_ru, year = date_part.split()    # ["26", "апреля", "2025"]
+                month = MONTHS.get(month_ru.lower(), "00")  # "04"
+                pub_time = f"{day}.{month}.{year}"  # "26.04.2025"
+            except (ValueError, AttributeError):
+                pub_time = "Не указано."
+        else:
+            pub_time = "Не указано."
     else:
         pub_time = "Не указано."
 
@@ -73,4 +100,4 @@ for article in articles:
 df = pd.DataFrame(data)
 df = df.drop_duplicates(subset='Описание').reset_index(drop=True)
 
-df.to_csv("FerraFrame.csv", index=False, encoding="utf-8")
+df.to_csv("../Frames/FerraFrame.csv", index=False, encoding="utf-8")
